@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DarkLand — Login</title>
+<style>
+
+  :root {
+    --gray-dark: #1a1a1a;
+    --gray-mid: #2e2e2e;
+    --gray-light: #4a4a4a;
+    --white: #f0f0f0;
+    --accent: #888;
+    --border: #555;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--gray-dark);
+    color: var(--white);
+    font-family: Arial, sans-serif;
+    min-height: 100vh;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* ── MAINTENANCE OVERLAY ── */
+  #maintenance-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: #0d0d0d;
+    z-index: 9999;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn .4s ease;
+  }
+  #maintenance-overlay.active { display: flex; }
+  #maintenance-overlay h1 {
+    font-family: Arial, sans-serif;
+    font-size: clamp(1rem, 4vw, 2rem);
+    color: var(--white);
+    text-align: center;
+    line-height: 1.8;
+    letter-spacing: 0px;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+  /* ── MINECRAFT CHUNK LOADER ── */
+  #chunk-loader {
+    position: fixed; inset: 0;
+    background: #111;
+    z-index: 999;
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    grid-template-rows: repeat(8, 1fr);
+  }
+  .chunk {
+    background: var(--gray-mid);
+    border: 1px solid #222;
+    opacity: 0;
+    transform: scale(0.6);
+    transition: opacity .3s ease, transform .3s ease;
+  }
+  .chunk.loaded {
+    opacity: 1;
+    transform: scale(1);
+  }
+  #chunk-loader.done { display: none; }
+
+  /* ── BACKGROUND GRID ── */
+  .bg-grid {
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+  }
+
+  /* ── MAIN CARD ── */
+  #app {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 20px;
+    opacity: 0;
+    animation: slideUp .6s ease .2s forwards;
+  }
+  @keyframes slideUp { from{opacity:0;transform:translateY(30px)} to{opacity:1;transform:translateY(0)} }
+
+  .card {
+    background: var(--gray-mid);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 40px 36px;
+    width: 100%;
+    max-width: 420px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.6);
+    position: relative;
+  }
+
+  .logo {
+    font-family: Arial, sans-serif;
+    font-size: 1.4rem;
+    text-align: center;
+    margin-bottom: 8px;
+    letter-spacing: 0px;
+    color: var(--white);
+  }
+  .logo span { color: var(--accent); }
+
+  .copyright {
+    text-align: center;
+    font-size: .75rem;
+    color: var(--accent);
+    margin-bottom: 30px;
+    letter-spacing: 0px;
+  }
+
+  .tab-group {
+    display: flex;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 28px;
+  }
+  .tab-btn {
+    flex: 1;
+    padding: 10px;
+    background: transparent;
+    border: none;
+    color: var(--accent);
+    font-family: Arial, sans-serif;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    letter-spacing: 0px;
+    transition: background .2s, color .2s;
+  }
+  .tab-btn.active { background: var(--gray-light); color: var(--white); }
+
+  .form-group { margin-bottom: 18px; }
+  .form-group label {
+    display: block;
+    font-size: .85rem;
+    color: var(--accent);
+    margin-bottom: 6px;
+    letter-spacing: 0px;
+    text-transform: uppercase;
+  }
+  .form-group input {
+    width: 100%;
+    padding: 11px 14px;
+    background: var(--gray-dark);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    color: var(--white);
+    font-family: Arial, sans-serif;
+    font-size: 1rem;
+    outline: none;
+    transition: border-color .2s;
+  }
+  .form-group input:focus { border-color: #888; }
+
+  .btn-main {
+    width: 100%;
+    padding: 13px;
+    background: var(--gray-light);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    color: var(--white);
+    font-family: Arial, sans-serif;
+    font-size: .65rem;
+    cursor: pointer;
+    letter-spacing: 0px;
+    transition: background .2s, transform .1s;
+    margin-top: 6px;
+  }
+  .btn-main:hover { background: #5a5a5a; transform: translateY(-1px); }
+  .btn-main:active { transform: translateY(0); }
+
+  .msg {
+    margin-top: 14px;
+    padding: 10px 14px;
+    border-radius: 3px;
+    font-size: .9rem;
+    font-weight: 600;
+    letter-spacing: .5px;
+    display: none;
+  }
+  .msg.error { background: #3a1a1a; border: 1px solid #7a3030; color: #f99; display: block; }
+  .msg.success { background: #1a3a1a; border: 1px solid #307a30; color: #9f9; display: block; }
+
+  /* ── INVISIBLE ADMIN BTN ── */
+  #admin-trigger {
+    position: fixed;
+    top: 0; right: 0;
+    width: 50px; height: 50px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    z-index: 100;
+  }
+
+  /* ── MODAL ── */
+  .modal-bg {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.8);
+    z-index: 500;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-bg.open { display: flex; animation: fadeIn .2s ease; }
+  @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+
+  .modal {
+    background: var(--gray-mid);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 32px;
+    width: 320px;
+    box-shadow: 0 20px 50px rgba(0,0,0,.8);
+  }
+  .modal h3 {
+    font-family: Arial, sans-serif;
+    font-size: .7rem;
+    margin-bottom: 20px;
+    color: var(--white);
+    letter-spacing: 0px;
+  }
+
+  @keyframes shake {
+    0%,100%{transform:translateX(0)}
+    20%{transform:translateX(-8px)}
+    40%{transform:translateX(8px)}
+    60%{transform:translateX(-6px)}
+    80%{transform:translateX(6px)}
+  }
+  .shake { animation: shake .4s ease; }
+</style>
+</head>
+<body>
+
+<!-- Chunk Loader -->
+<div id="chunk-loader">
+  <div class="chunk" id="c0"></div><div class="chunk" id="c1"></div>
+  <div class="chunk" id="c2"></div><div class="chunk" id="c3"></div>
+  <div class="chunk" id="c4"></div><div class="chunk" id="c5"></div>
+  <div class="chunk" id="c6"></div><div class="chunk" id="c7"></div>
+  <div class="chunk" id="c8"></div><div class="chunk" id="c9"></div>
+  <div class="chunk" id="c10"></div><div class="chunk" id="c11"></div>
+  <div class="chunk" id="c12"></div><div class="chunk" id="c13"></div>
+  <div class="chunk" id="c14"></div><div class="chunk" id="c15"></div>
+  <div class="chunk" id="c16"></div><div class="chunk" id="c17"></div>
+  <div class="chunk" id="c18"></div><div class="chunk" id="c19"></div>
+  <div class="chunk" id="c20"></div><div class="chunk" id="c21"></div>
+  <div class="chunk" id="c22"></div><div class="chunk" id="c23"></div>
+  <div class="chunk" id="c24"></div><div class="chunk" id="c25"></div>
+  <div class="chunk" id="c26"></div><div class="chunk" id="c27"></div>
+  <div class="chunk" id="c28"></div><div class="chunk" id="c29"></div>
+  <div class="chunk" id="c30"></div><div class="chunk" id="c31"></div>
+  <div class="chunk" id="c32"></div><div class="chunk" id="c33"></div>
+  <div class="chunk" id="c34"></div><div class="chunk" id="c35"></div>
+  <div class="chunk" id="c36"></div><div class="chunk" id="c37"></div>
+  <div class="chunk" id="c38"></div><div class="chunk" id="c39"></div>
+  <div class="chunk" id="c40"></div><div class="chunk" id="c41"></div>
+  <div class="chunk" id="c42"></div><div class="chunk" id="c43"></div>
+  <div class="chunk" id="c44"></div><div class="chunk" id="c45"></div>
+  <div class="chunk" id="c46"></div><div class="chunk" id="c47"></div>
+  <div class="chunk" id="c48"></div><div class="chunk" id="c49"></div>
+  <div class="chunk" id="c50"></div><div class="chunk" id="c51"></div>
+  <div class="chunk" id="c52"></div><div class="chunk" id="c53"></div>
+  <div class="chunk" id="c54"></div><div class="chunk" id="c55"></div>
+  <div class="chunk" id="c56"></div><div class="chunk" id="c57"></div>
+  <div class="chunk" id="c58"></div><div class="chunk" id="c59"></div>
+  <div class="chunk" id="c60"></div><div class="chunk" id="c61"></div>
+  <div class="chunk" id="c62"></div><div class="chunk" id="c63"></div>
+</div>
+
+<!-- Maintenance Overlay -->
+<div id="maintenance-overlay">
+  <h1>🚫<br>MEJORANDO<br>PAGINA<br>🚫</h1>
+</div>
+
+<div class="bg-grid"></div>
+
+<!-- Invisible admin trigger (top-right corner) -->
+<button id="admin-trigger" onclick="openAdminModal()"></button>
+
+<!-- Admin password modal -->
+<div class="modal-bg" id="admin-modal">
+  <div class="modal">
+    <h3>🔒 ACCESO ADMIN</h3>
+    <div class="form-group">
+      <label>Contraseña</label>
+      <input type="password" id="admin-pass" placeholder="••••••••••">
+    </div>
+    <button class="btn-main" onclick="checkAdminPass()">ENTRAR</button>
+    <button class="btn-main" style="margin-top:8px;background:#333" onclick="closeAdminModal()">CANCELAR</button>
+    <div class="msg" id="admin-msg"></div>
+  </div>
+</div>
+
+<div id="app">
+  <div class="card">
+    <div class="logo">⚔️ <span>Dark</span>Land ⚔️</div>
+    <div class="copyright">© DarkLand — All rights reserved</div>
+
+    <div class="tab-group">
+      <button class="tab-btn active" onclick="showTab('login')">INICIAR SESIÓN</button>
+    </div>
+
+    <!-- LOGIN FORM -->
+    <div id="form-login">
+      <div class="form-group">
+        <label>Usuario</label>
+        <input type="text" id="login-user" placeholder="Tu usuario">
+      </div>
+      <div class="form-group">
+        <label>Contraseña</label>
+        <input type="password" id="login-pass" placeholder="••••••••">
+      </div>
+      <button class="btn-main" onclick="doLogin()">▶ INGRESAR</button>
+      <div class="msg" id="login-msg"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── CHUNK LOADER ──
+const chunks = document.querySelectorAll('.chunk');
+let i = 0;
+function loadNextChunk() {
+  if (i < chunks.length) {
+    chunks[i].classList.add('loaded');
+    i++;
+    setTimeout(loadNextChunk, 18);
+  } else {
+    setTimeout(() => document.getElementById('chunk-loader').classList.add('done'), 300);
+  }
+}
+window.onload = () => {
+  checkMaintenance();
+  loadNextChunk();
+  checkAutoLogin();
+};
+
+// ── MAINTENANCE ──
+function checkMaintenance() {
+  if (localStorage.getItem('maintenance') === '1') {
+    document.getElementById('maintenance-overlay').classList.add('active');
+  }
+}
+
+// ── AUTO LOGIN ──
+function checkAutoLogin() {
+  const logged = localStorage.getItem('loggedUser');
+  if (logged) window.location.href = 'ss.html';
+}
+
+// ── LOGIN ──
+function doLogin() {
+  const user = document.getElementById('login-user').value.trim();
+  const pass = document.getElementById('login-pass').value.trim();
+  const msg = document.getElementById('login-msg');
+
+  const storedUser = localStorage.getItem('dl_user');
+  const storedPass = localStorage.getItem('dl_pass');
+  const loggedUser = localStorage.getItem('loggedUser');
+
+  if (!storedUser || !storedPass) {
+    showMsg(msg, 'error', '❌ No hay cuentas creadas aún.');
+    return;
+  }
+  if (loggedUser) {
+    showMsg(msg, 'error', '⚠️ Ya hay un usuario logueado. Sesión única activa.');
+    return;
+  }
+  if (user === storedUser && pass === storedPass) {
+    localStorage.setItem('loggedUser', user);
+    showMsg(msg, 'success', '✅ Bienvenido, ' + user + '!');
+    setTimeout(() => window.location.href = 'ss.html', 800);
+  } else {
+    showMsg(msg, 'error', '❌ Usuario o contraseña incorrectos.');
+  }
+}
+
+// ── ADMIN MODAL ──
+function openAdminModal() {
+  document.getElementById('admin-modal').classList.add('open');
+  document.getElementById('admin-pass').value = '';
+  document.getElementById('admin-msg').className = 'msg';
+}
+function closeAdminModal() {
+  document.getElementById('admin-modal').classList.remove('open');
+}
+function checkAdminPass() {
+  const pass = document.getElementById('admin-pass').value;
+  const msg = document.getElementById('admin-msg');
+  if (pass === 'darkland255') {
+    closeAdminModal();
+    window.location.href = 'admin.html';
+  } else {
+    const input = document.getElementById('admin-pass');
+    input.classList.remove('shake');
+    void input.offsetWidth;
+    input.classList.add('shake');
+    showMsg(msg, 'error', '❌ Contraseña incorrecta.');
+  }
+}
+
+// ── UTILS ──
+function showMsg(el, type, text) {
+  el.className = 'msg ' + type;
+  el.textContent = text;
+}
+
+// Enter key on admin pass
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('admin-pass')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter') checkAdminPass();
+  });
+  document.getElementById('login-pass')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter') doLogin();
+  });
+});
+</script>
+</body>
+</html>
