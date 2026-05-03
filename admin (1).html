@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DarkLand — Admin</title>
+<style>
+  :root { --gray-dark:#1a1a1a; --gray-mid:#2e2e2e; --gray-light:#4a4a4a; --white:#f0f0f0; --accent:#888; --border:#555; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--gray-dark); color:var(--white); font-family:Arial,sans-serif; min-height:100vh; }
+  #chunk-loader { position:fixed; inset:0; background:#111; z-index:999; display:grid; grid-template-columns:repeat(8,1fr); grid-template-rows:repeat(8,1fr); }
+  .chunk { background:var(--gray-mid); border:1px solid #222; opacity:0; transform:scale(0.6); transition:opacity .3s ease,transform .3s ease; }
+  .chunk.loaded { opacity:1; transform:scale(1); }
+  #chunk-loader.done { display:none; }
+  .bg-grid { position:fixed; inset:0; background-image:linear-gradient(rgba(255,255,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.03) 1px,transparent 1px); background-size:40px 40px; pointer-events:none; }
+  #app { opacity:0; animation:slideUp .6s ease .2s forwards; padding:30px 20px; max-width:860px; margin:0 auto; }
+  @keyframes slideUp { from{opacity:0;transform:translateY(30px)} to{opacity:1;transform:translateY(0)} }
+  h1 { font-size:1.5rem; font-weight:900; text-align:center; margin-bottom:4px; }
+  .sub { text-align:center; color:var(--accent); font-size:.85rem; margin-bottom:28px; }
+  .panel { background:var(--gray-mid); border:1px solid var(--border); border-radius:4px; padding:24px; margin-bottom:22px; }
+  .panel h2 { font-size:1rem; font-weight:700; margin-bottom:18px; }
+  .form-group { margin-bottom:14px; }
+  .form-group label { display:block; font-size:.8rem; color:var(--accent); margin-bottom:5px; text-transform:uppercase; }
+  .form-group input { width:100%; padding:10px 13px; background:var(--gray-dark); border:1px solid var(--border); border-radius:3px; color:var(--white); font-family:Arial,sans-serif; font-size:.95rem; outline:none; transition:border-color .2s; }
+  .form-group input:focus { border-color:#888; }
+  .btn { padding:11px 18px; background:var(--gray-light); border:1px solid var(--border); border-radius:3px; color:var(--white); font-family:Arial,sans-serif; font-size:.9rem; font-weight:700; cursor:pointer; transition:background .2s,transform .1s; }
+  .btn:hover { background:#5a5a5a; transform:translateY(-1px); }
+  .btn.danger { background:#5a1a1a; border-color:#7a3030; }
+  .btn.danger:hover { background:#7a2020; }
+  .btn.success-btn { background:#1a5a1a; border-color:#307a30; }
+  .btn.success-btn:hover { background:#206620; }
+  .btn.small { padding:6px 12px; font-size:.8rem; }
+
+  /* STATS ROW */
+  .stats-row { display:flex; gap:14px; flex-wrap:wrap; margin-bottom:22px; }
+  .stat-box { flex:1; min-width:140px; background:var(--gray-mid); border:1px solid var(--border); border-radius:4px; padding:14px 18px; }
+  .stat-box .stat-num { font-size:2rem; font-weight:900; }
+  .stat-box .stat-label { font-size:.78rem; color:var(--accent); margin-top:2px; }
+
+  /* MAINTENANCE */
+  .maint-row { display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+  .maint-status { font-size:.85rem; font-weight:700; padding:8px 14px; border-radius:3px; }
+  .maint-status.on { background:#5a1a1a; color:#f99; border:1px solid #7a3030; }
+  .maint-status.off { background:#1a3a1a; color:#9f9; border:1px solid #307a30; }
+
+  /* SEARCH */
+  .search-row { display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap; }
+  .search-row input { flex:1; min-width:180px; padding:9px 13px; background:var(--gray-dark); border:1px solid var(--border); border-radius:3px; color:var(--white); font-family:Arial,sans-serif; font-size:.9rem; outline:none; }
+  .search-row input:focus { border-color:#888; }
+  .search-row select { padding:9px 13px; background:var(--gray-dark); border:1px solid var(--border); border-radius:3px; color:var(--white); font-family:Arial,sans-serif; font-size:.9rem; outline:none; }
+
+  /* STAFF STATS */
+  .staff-table { width:100%; border-collapse:collapse; font-size:.88rem; }
+  .staff-table th { text-align:left; padding:8px 12px; color:var(--accent); border-bottom:1px solid var(--border); font-weight:600; text-transform:uppercase; font-size:.75rem; }
+  .staff-table td { padding:9px 12px; border-bottom:1px solid #333; }
+  .staff-table tr:last-child td { border-bottom:none; }
+  .staff-badge { display:inline-block; padding:2px 8px; border-radius:3px; font-size:.75rem; font-weight:700; background:var(--gray-light); border:1px solid var(--border); }
+
+  /* REPORTS */
+  .report-card { background:var(--gray-dark); border:1px solid var(--border); border-radius:4px; padding:16px; margin-bottom:12px; animation:fadeIn .3s ease; position:relative; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+  .report-card .r-date { font-size:.75rem; color:var(--accent); margin-bottom:8px; }
+  .report-card .r-row { display:flex; gap:8px; margin-bottom:4px; flex-wrap:wrap; }
+  .report-card .r-label { font-size:.75rem; color:var(--accent); min-width:100px; text-transform:uppercase; }
+  .report-card .r-value { font-size:.9rem; font-weight:600; }
+  .ban-badge { display:inline-block; padding:2px 8px; border-radius:3px; font-size:.75rem; font-weight:700; background:#5a1a1a; color:#f99; border:1px solid #7a3030; }
+  .del-btn { position:absolute; top:12px; right:12px; padding:5px 10px; background:#5a1a1a; border:1px solid #7a3030; border-radius:3px; color:#f99; font-size:.75rem; cursor:pointer; transition:background .2s; }
+  .del-btn:hover { background:#7a2020; }
+  .no-reports { text-align:center; color:var(--accent); font-size:.85rem; padding:20px; }
+  .results-count { font-size:.8rem; color:var(--accent); margin-bottom:10px; }
+
+  .msg { margin-top:12px; padding:10px 14px; border-radius:3px; font-size:.9rem; font-weight:600; display:none; }
+  .msg.success { background:#1a3a1a; border:1px solid #307a30; color:#9f9; display:block; }
+  .msg.error { background:#3a1a1a; border:1px solid #7a3030; color:#f99; display:block; }
+
+  #maint-off-trigger { position:fixed; top:0; right:0; width:50px; height:50px; background:transparent; border:none; cursor:pointer; z-index:100; }
+  .modal-bg { display:none; position:fixed; inset:0; background:rgba(0,0,0,.8); z-index:500; align-items:center; justify-content:center; }
+  .modal-bg.open { display:flex; animation:fadeIn .2s ease; }
+  .modal { background:var(--gray-mid); border:1px solid var(--border); border-radius:4px; padding:28px; width:300px; }
+  .modal h3 { font-size:1rem; font-weight:700; margin-bottom:16px; }
+  footer { text-align:center; padding:20px; color:var(--accent); font-size:.75rem; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-8px)} 40%{transform:translateX(8px)} 60%{transform:translateX(-6px)} 80%{transform:translateX(6px)} }
+  .shake { animation:shake .4s ease; }
+</style>
+</head>
+<body>
+<div id="chunk-loader"><script>for(let x=0;x<64;x++) document.write('<div class="chunk"></div>');</script></div>
+<button id="maint-off-trigger" onclick="openMaintOffModal()"></button>
+
+<div class="modal-bg" id="maint-off-modal">
+  <div class="modal">
+    <h3>🔑 Desactivar Mantenimiento</h3>
+    <div class="form-group">
+      <label>Contraseña</label>
+      <input type="password" id="maint-off-pass" placeholder="••••••••">
+    </div>
+    <button class="btn" onclick="disableMaintenance()">Desactivar</button>
+    <button class="btn" style="margin-top:8px;background:#333" onclick="closeMaintOffModal()">Cancelar</button>
+    <div class="msg" id="maint-off-msg"></div>
+  </div>
+</div>
+
+<div class="bg-grid"></div>
+
+<div id="app">
+  <h1>⚙️ PANEL ADMIN</h1>
+  <div class="sub">© DarkLand — Administración</div>
+
+  <!-- STATS -->
+  <div class="stats-row">
+    <div class="stat-box">
+      <div class="stat-num" id="total-reports">0</div>
+      <div class="stat-label">📋 Total de reportes</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-num" id="total-bans">0</div>
+      <div class="stat-label">🔨 Bans ejecutados</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-num" id="total-staff">0</div>
+      <div class="stat-label">🛡️ Staff activos</div>
+    </div>
+  </div>
+
+  <!-- CREAR CUENTA -->
+  <div class="panel">
+    <h2>👤 CREAR CUENTA DE USUARIO</h2>
+    <div class="form-group">
+      <label>Usuario</label>
+      <input type="text" id="new-user" placeholder="Nombre de usuario">
+    </div>
+    <div class="form-group">
+      <label>Contraseña</label>
+      <input type="password" id="new-pass" placeholder="Contraseña">
+    </div>
+    <button class="btn success-btn" onclick="createAccount()">✅ CREAR CUENTA</button>
+    <div class="msg" id="create-msg"></div>
+  </div>
+
+  <!-- MANTENIMIENTO -->
+  <div class="panel">
+    <h2>🔧 MANTENIMIENTO</h2>
+    <div class="maint-row">
+      <div class="maint-status off" id="maint-status">● DESACTIVADO</div>
+      <button class="btn danger" id="maint-btn" onclick="toggleMaintenance()">🔴 ACTIVAR MANTENIMIENTO</button>
+    </div>
+  </div>
+
+  <!-- HISTORIAL POR STAFF -->
+  <div class="panel">
+    <h2>🛡️ REPORTES POR STAFF</h2>
+    <div id="staff-table-wrap"><div class="no-reports">Sin reportes aún.</div></div>
+  </div>
+
+  <!-- REPORTES -->
+  <div class="panel">
+    <h2>📋 TODOS LOS REPORTES</h2>
+    <div class="search-row">
+      <input type="text" id="search-input" placeholder="🔍 Buscar por usuario, staff, ban..." oninput="renderReports()">
+      <select id="search-filter" onchange="renderReports()">
+        <option value="">Todos</option>
+        <option value="BAN">BAN</option>
+        <option value="REFUSE">REFUSE</option>
+        <option value="LIMPIO">LIMPIO</option>
+      </select>
+    </div>
+    <div class="results-count" id="results-count"></div>
+    <div id="reports-list"><div class="no-reports">Sin reportes aún 📭</div></div>
+  </div>
+
+  <footer>© 2025 DarkLand — All rights reserved</footer>
+</div>
+
+<script>
+window.onload = () => { loadChunks(); loadMaintStatus(); loadStats(); loadStaffTable(); renderReports(); };
+
+function loadChunks() {
+  const chunks = document.querySelectorAll('.chunk'); let i = 0;
+  function next() { if (i < chunks.length) { chunks[i++].classList.add('loaded'); setTimeout(next, 18); } else setTimeout(() => document.getElementById('chunk-loader').classList.add('done'), 300); }
+  next();
+}
+
+function loadMaintStatus() {
+  const on = localStorage.getItem('maintenance') === '1';
+  const st = document.getElementById('maint-status');
+  const btn = document.getElementById('maint-btn');
+  if (on) { st.textContent = '● ACTIVO'; st.className = 'maint-status on'; btn.textContent = '🟢 DESACTIVAR'; btn.className = 'btn success-btn'; }
+  else { st.textContent = '● DESACTIVADO'; st.className = 'maint-status off'; btn.textContent = '🔴 ACTIVAR MANTENIMIENTO'; btn.className = 'btn danger'; }
+}
+function toggleMaintenance() {
+  const on = localStorage.getItem('maintenance') === '1';
+  localStorage.setItem('maintenance', on ? '0' : '1');
+  loadMaintStatus();
+}
+function openMaintOffModal() { document.getElementById('maint-off-modal').classList.add('open'); document.getElementById('maint-off-pass').value = ''; document.getElementById('maint-off-msg').className = 'msg'; }
+function closeMaintOffModal() { document.getElementById('maint-off-modal').classList.remove('open'); }
+function disableMaintenance() {
+  const pass = document.getElementById('maint-off-pass').value;
+  if (pass === 'darkland255') { localStorage.setItem('maintenance','0'); closeMaintOffModal(); loadMaintStatus(); }
+  else { const inp = document.getElementById('maint-off-pass'); inp.classList.remove('shake'); void inp.offsetWidth; inp.classList.add('shake'); document.getElementById('maint-off-msg').className = 'msg error'; document.getElementById('maint-off-msg').textContent = '❌ Contraseña incorrecta.'; }
+}
+
+function createAccount() {
+  const user = document.getElementById('new-user').value.trim();
+  const pass = document.getElementById('new-pass').value.trim();
+  const msg = document.getElementById('create-msg');
+  if (!user || !pass) { msg.className = 'msg error'; msg.textContent = '⚠️ Completa ambos campos.'; return; }
+  localStorage.setItem('dl_user', user); localStorage.setItem('dl_pass', pass); localStorage.removeItem('loggedUser');
+  msg.className = 'msg success'; msg.textContent = '✅ Cuenta creada: ' + user;
+  document.getElementById('new-user').value = ''; document.getElementById('new-pass').value = '';
+}
+
+function loadStats() {
+  const reports = JSON.parse(localStorage.getItem('dl_reports') || '[]');
+  document.getElementById('total-reports').textContent = reports.length;
+  document.getElementById('total-bans').textContent = reports.filter(r => r.ban && r.ban.includes('BAN')).length;
+  const staffSet = new Set(reports.map(r => r.staff).filter(Boolean));
+  document.getElementById('total-staff').textContent = staffSet.size;
+}
+
+function loadStaffTable() {
+  const reports = JSON.parse(localStorage.getItem('dl_reports') || '[]');
+  const wrap = document.getElementById('staff-table-wrap');
+  if (!reports.length) { wrap.innerHTML = '<div class="no-reports">Sin reportes aún.</div>'; return; }
+  const staffMap = {};
+  reports.forEach(r => {
+    if (!r.staff) return;
+    if (!staffMap[r.staff]) staffMap[r.staff] = { total:0, bans:0, refuses:0, limpios:0 };
+    staffMap[r.staff].total++;
+    if (r.ban && r.ban.includes('BAN')) staffMap[r.staff].bans++;
+    else if (r.ban && r.ban.includes('REFUSE')) staffMap[r.staff].refuses++;
+    else if (r.ban && r.ban.includes('LIMPIO')) staffMap[r.staff].limpios++;
+  });
+  const rows = Object.entries(staffMap).sort((a,b) => b[1].total - a[1].total).map(([name, s]) =>
+    `<tr><td><span class="staff-badge">🛡️ ${name}</span></td><td>${s.total}</td><td>${s.bans}</td><td>${s.refuses}</td><td>${s.limpios}</td></tr>`
+  ).join('');
+  wrap.innerHTML = `<table class="staff-table"><thead><tr><th>Staff</th><th>Total</th><th>Bans</th><th>Refuses</th><th>Limpios</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+function renderReports() {
+  const query = (document.getElementById('search-input').value || '').toLowerCase();
+  const filter = document.getElementById('search-filter').value;
+  let reports = JSON.parse(localStorage.getItem('dl_reports') || '[]');
+
+  if (filter) reports = reports.filter(r => r.ban && r.ban.toUpperCase().includes(filter));
+  if (query) reports = reports.filter(r =>
+    (r.usuario||'').toLowerCase().includes(query) ||
+    (r.staff||'').toLowerCase().includes(query) ||
+    (r.ban||'').toLowerCase().includes(query) ||
+    (r.mods||'').toLowerCase().includes(query) ||
+    (r.sospechas||'').toLowerCase().includes(query)
+  );
+
+  const countEl = document.getElementById('results-count');
+  countEl.textContent = reports.length ? `${reports.length} reporte(s) encontrado(s)` : '';
+
+  const container = document.getElementById('reports-list');
+  if (!reports.length) { container.innerHTML = '<div class="no-reports">Sin resultados 📭</div>'; return; }
+
+  container.innerHTML = [...reports].reverse().map(r => `
+    <div class="report-card" id="rc-${r.id}">
+      <button class="del-btn" onclick="deleteReport(${r.id})">🗑️ Eliminar</button>
+      <div class="r-date">📅 ${r.fecha} &nbsp;|&nbsp; Staff: <strong>${r.staff}</strong></div>
+      <div class="r-row"><span class="r-label">👤 Usuario</span><span class="r-value">${r.usuario}</span></div>
+      <div class="r-row"><span class="r-label">🔍 Sospechas</span><span class="r-value">${r.sospechas}</span></div>
+      <div class="r-row"><span class="r-label">⚒️ Mods</span><span class="r-value">${r.mods}</span></div>
+      <div class="r-row"><span class="r-label">🔨 Resultado</span><span class="r-value"><span class="ban-badge">${r.ban}</span></span></div>
+      <div class="r-row"><span class="r-label">⏱️ Duración</span><span class="r-value">${r.dia}</span></div>
+    </div>`).join('');
+}
+
+function deleteReport(id) {
+  if (!confirm('¿Eliminar este reporte?')) return;
+  let reports = JSON.parse(localStorage.getItem('dl_reports') || '[]');
+  reports = reports.filter(r => r.id !== id);
+  localStorage.setItem('dl_reports', JSON.stringify(reports));
+  loadStats(); loadStaffTable(); renderReports();
+}
+</script>
+</body>
+</html>
